@@ -17,12 +17,14 @@ class Remi extends Model
         'description',
         'responsible_user_id',
         'responsible_department_id',
+        'progreso_manual',
     ];
 
     protected $casts = [
         'company_id' => 'integer',
         'responsible_user_id' => 'integer',
         'responsible_department_id' => 'integer',
+        'progreso_manual' => 'integer',
     ];
 
     public function scopeWithAll($query)

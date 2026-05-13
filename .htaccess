@@ -1,0 +1,20 @@
+# Si el docroot apunta aquí (raíz del repo), bloquear acceso web directo a lo sensible.
+<FilesMatch "^(\.env|\.env\.|composer\.(json|lock)|package\.json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Si el subdominio del API apunta a la RAÍZ del repo (donde está /app, /routes)
+    # en lugar de /public, esta regla envía cada petición a public/.
+    # Lo ideal en producción: en el hosting, Document Root = .../public (sin este archivo).
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

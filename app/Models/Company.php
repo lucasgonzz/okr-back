@@ -31,7 +31,9 @@ class Company extends Model
 
     public function admins()
     {
-        return $this->hasMany(User::class)->where('role', User::ROLE_ADMIN);
+        return $this->hasMany(User::class)
+            ->where('role', User::ROLE_ADMIN)
+            ->orderBy('id');
     }
 
     public function departments()

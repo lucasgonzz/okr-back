@@ -1,3 +1,14 @@
+<IfModule mod_headers.c>
+    # --- CORS: responder desde Apache sin pasar por PHP ---
+    # Si el Origin viene de un dominio permitido, reflejarlo en la cabecera
+    SetEnvIf Origin "^https://(www\.)?panelokr\.com$" CORS_ORIGIN=$0
+    Header always set Access-Control-Allow-Origin  "%{CORS_ORIGIN}e"  env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Authorization, Content-Type, Accept, X-Requested-With"
+    Header always set Access-Control-Max-Age       "86400"
+    Header always set Vary                         "Origin"
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -5,16 +16,20 @@
 
     RewriteEngine On
 
-    # Handle Authorization Header
+    # Pasar el header Authorization a PHP (algunos hosts lo eliminan)
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirect Trailing Slashes If Not A Folder...
+    # Responder OPTIONS con 204 inmediatamente — sin llegar a PHP
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^ - [R=204,L]
+
+    # Quitar trailing slash
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
+    # Todo lo demás → index.php
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]

@@ -95,6 +95,18 @@ class UserController extends Controller
         $this->denyNonAdmin($request);
 
         $user = User::where('company_id', $request->user()->company_id)->findOrFail($id);
+
+        if (
+            (int) $request->user()->id === (int) $id
+            && array_key_exists('role', $request->all())
+            && $request->input('role') === User::ROLE_USER
+            && $request->user()->role === User::ROLE_ADMIN
+        ) {
+            return response()->json([
+                'message' => 'No podés quitarte el rol de administrador a vos mismo.',
+            ], 422);
+        }
+
         $before = $user->getAttributes();
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],

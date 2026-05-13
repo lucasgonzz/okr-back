@@ -50,6 +50,18 @@ class CompanyHelper
     }
 
     /**
+     * Primer administrador de la empresa (mismo criterio que al crear: el admin inicial tiene el id más bajo).
+     */
+    public static function primaryAdmin(Company $company): ?User
+    {
+        return User::query()
+            ->where('company_id', $company->id)
+            ->where('role', User::ROLE_ADMIN)
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
      * Crea los cuatrimestres (Q1–Q4) para el año en curso y el siguiente, para que la empresa pueda usarlos de inmediato.
      */
     private static function createDefaultQuarters(Company $company): void

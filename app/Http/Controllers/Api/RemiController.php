@@ -16,6 +16,7 @@ class RemiController extends Controller
         'description' => 'Descripcion',
         'responsible_user_id' => 'Responsable (usuario)',
         'responsible_department_id' => 'Responsable (departamento)',
+        'progreso_manual' => 'Progreso manual (%)',
     ];
 
     public function index(Request $request)
@@ -50,6 +51,7 @@ class RemiController extends Controller
             'description' => $request->input('description'),
             'responsible_user_id' => $request->input('responsible_user_id'),
             'responsible_department_id' => $request->input('responsible_department_id'),
+            'progreso_manual' => self::clampProgresoManual($request->input('progreso_manual')),
         ]);
         ActivityLogHelper::logCreation(
             $remi,
@@ -77,6 +79,9 @@ class RemiController extends Controller
             'responsible_user_id',
             'responsible_department_id',
         ]));
+        if ($request->has('progreso_manual')) {
+            $remi->progreso_manual = self::clampProgresoManual($request->input('progreso_manual'));
+        }
         $remi->save();
         ActivityLogHelper::logUpdate(
             $remi,
@@ -117,5 +122,16 @@ class RemiController extends Controller
         if (! $request->user() || $request->user()->role !== User::ROLE_ADMIN) {
             abort(response()->json(['message' => 'Only admins can manage REMIs.'], 403));
         }
+    }
+
+    private static function clampProgresoManual($value): int
+    {
+        if ($value === null || $value === '') {
+            return 0;
+        }
+
+        $n = (int) $value;
+
+        return max(0, min(100, $n));
     }
 }

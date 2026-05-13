@@ -9,6 +9,9 @@ use App\Http\Resources\CompanyResource;
 use App\Http\Resources\UserResource;
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 /**
  * Super admin only: manage platform customers (companies) and their initial admin.
@@ -67,21 +70,64 @@ class CompanyController extends Controller
     public function update(Request $request, $id)
     {
         $company = Company::findOrFail($id);
-        $before = $company->getAttributes();
-        $company->fill($request->only(['name', 'slug', 'active']));
-        $company->save();
-        ActivityLogHelper::logUpdate(
-            $company,
-            $before,
-            $company->getAttributes(),
-            'company',
-            'empresa',
-            self::LOG_FIELDS,
-            $request->user(),
-            ['company_id' => $company->id]
-        );
+        $primaryAdmin = CompanyHelper::primaryAdmin($company);
 
-        return response()->json(['company' => new CompanyResource($company)]);
+        $rules = [
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'active' => 'sometimes|boolean',
+        ];
+
+        if ($request->has('admin_name')) {
+            if (! $primaryAdmin) {
+                return response()->json([
+                    'message' => 'Esta empresa no tiene un usuario administrador.',
+                ], 422);
+            }
+            $rules['admin_name'] = 'required|string|max:255';
+            $rules['admin_email'] = [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($primaryAdmin->id),
+            ];
+            $rules['admin_password'] = 'nullable|string|min:6';
+        }
+
+        $validated = $request->validate($rules);
+
+        return DB::transaction(function () use ($request, $company, $validated, $primaryAdmin) {
+            $before = $company->getAttributes();
+            $company->fill($request->only(['name', 'slug', 'active']));
+            $company->save();
+
+            ActivityLogHelper::logUpdate(
+                $company,
+                $before,
+                $company->getAttributes(),
+                'company',
+                'empresa',
+                self::LOG_FIELDS,
+                $request->user(),
+                ['company_id' => $company->id]
+            );
+
+            if ($request->has('admin_name') && $primaryAdmin) {
+                $primaryAdmin->name = $validated['admin_name'];
+                $primaryAdmin->email = $validated['admin_email'];
+                if (! empty($validated['admin_password'] ?? null)) {
+                    $primaryAdmin->password = Hash::make($validated['admin_password']);
+                }
+                $primaryAdmin->save();
+            }
+
+            $admin = CompanyHelper::primaryAdmin($company);
+
+            return response()->json([
+                'company' => new CompanyResource($company),
+                'admin' => $admin ? new UserResource($admin) : null,
+            ]);
+        });
     }
 
     public function destroy($id)
