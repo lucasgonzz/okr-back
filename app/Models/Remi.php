@@ -29,7 +29,7 @@ class Remi extends Model
 
     public function scopeWithAll($query)
     {
-        return $query->with(['responsibleUser', 'responsibleDepartment']);
+        return $query->with(['responsibleUser', 'responsibleDepartment', 'quarters']);
     }
 
     public function company()
@@ -50,5 +50,10 @@ class Remi extends Model
     public function objectives()
     {
         return $this->hasMany(Objective::class);
+    }
+
+    public function quarters()
+    {
+        return $this->belongsToMany(Quarter::class, 'quarter_remi');
     }
 }

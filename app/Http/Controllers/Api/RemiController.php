@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Helpers\ActivityLogHelper;
 use App\Http\Resources\RemiResource;
+use App\Models\Quarter;
 use App\Models\Remi;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -53,6 +54,8 @@ class RemiController extends Controller
             'responsible_department_id' => $request->input('responsible_department_id'),
             'progreso_manual' => self::clampProgresoManual($request->input('progreso_manual')),
         ]);
+        $this->syncQuarters($remi, $request, $companyId);
+
         ActivityLogHelper::logCreation(
             $remi,
             'remi',
@@ -83,6 +86,7 @@ class RemiController extends Controller
             $remi->progreso_manual = self::clampProgresoManual($request->input('progreso_manual'));
         }
         $remi->save();
+        $this->syncQuarters($remi, $request, $request->user()->company_id);
         ActivityLogHelper::logUpdate(
             $remi,
             $before,
@@ -122,6 +126,27 @@ class RemiController extends Controller
         if (! $request->user() || $request->user()->role !== User::ROLE_ADMIN) {
             abort(response()->json(['message' => 'Only admins can manage REMIs.'], 403));
         }
+    }
+
+    private function syncQuarters(Remi $remi, Request $request, int $companyId): void
+    {
+        if (! $request->has('quarter_ids')) {
+            return;
+        }
+
+        $ids = collect($request->input('quarter_ids', []))
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $validIds = Quarter::where('company_id', $companyId)
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->all();
+
+        $remi->quarters()->sync($validIds);
     }
 
     private static function clampProgresoManual($value): int

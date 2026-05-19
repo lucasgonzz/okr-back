@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| CORS (fruitcake/laravel-cors + asm89/stack-cors)
+| CORS (Laravel HandleCors + config/cors.php)
 |--------------------------------------------------------------------------
 |
 | - paths: usar ['*'] en subdominio dedicado al API evita que el preflight

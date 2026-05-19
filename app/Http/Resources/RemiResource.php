@@ -20,6 +20,9 @@ class RemiResource extends JsonResource
                 return $this->responsibleDepartment ? new DepartmentResource($this->responsibleDepartment) : null;
             }),
             'progresoManual' => (int) ($this->progreso_manual ?? 0),
+            'quarters' => $this->whenLoaded('quarters', function () {
+                return QuarterResource::collection($this->quarters);
+            }),
         ];
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Helpers\KeyResultHelper;
 use App\Http\Controllers\Helpers\ObjectiveHelper;
 use App\Http\Resources\KeyResultResource;
+use App\Http\Resources\ObjectiveResource;
 use App\Models\KeyResult;
 use App\Models\Objective;
 use App\Models\User;
@@ -85,6 +86,7 @@ class KeyResultController extends Controller
 
         return response()->json([
             'keyResult' => new KeyResultResource($this->fullModel('KeyResult', $kr->id)),
+            'objective' => new ObjectiveResource($this->fullModel('Objective', $objective->id)),
         ], 201);
     }
 
@@ -152,6 +154,7 @@ class KeyResultController extends Controller
 
         return response()->json([
             'keyResult' => new KeyResultResource($this->fullModel('KeyResult', $kr->id)),
+            'objective' => new ObjectiveResource($this->fullModel('Objective', $objective->id)),
         ]);
     }
 
@@ -180,7 +183,10 @@ class KeyResultController extends Controller
 
         ObjectiveHelper::recalcFromKeyResults($objective->fresh());
 
-        return response()->json(['message' => 'Key result deleted.']);
+        return response()->json([
+            'message' => 'Key result deleted.',
+            'objective' => new ObjectiveResource($this->fullModel('Objective', $objective->id)),
+        ]);
     }
 
     private function findObjectiveInCompany(Request $request, $objectiveId): Objective

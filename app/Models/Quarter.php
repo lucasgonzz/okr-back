@@ -36,4 +36,9 @@ class Quarter extends Model
     {
         return $this->hasMany(Objective::class);
     }
+
+    public function remis()
+    {
+        return $this->belongsToMany(Remi::class, 'quarter_remi');
+    }
 }
