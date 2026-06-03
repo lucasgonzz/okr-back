@@ -11,8 +11,6 @@ use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-
 /**
  * Super admin only: manage platform customers (companies) and their initial admin.
  */
@@ -85,12 +83,7 @@ class CompanyController extends Controller
                 ], 422);
             }
             $rules['admin_name'] = 'required|string|max:255';
-            $rules['admin_email'] = [
-                'required',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($primaryAdmin->id),
-            ];
+            $rules['admin_email'] = ['required', 'email', 'max:255'];
             $rules['admin_password'] = 'nullable|string|min:6';
         }
 

@@ -24,15 +24,15 @@ class AuthController extends Controller
 
         if ($email === '' || $password === '') {
             throw ValidationException::withMessages([
-                'email' => ['Email and password are required.'],
+                'email' => ['El correo y la contraseña son obligatorios.'],
             ]);
         }
 
         $user = User::where('email', $email)->first();
 
-        if (! $user || ! Hash::check($password, $user->password)) {
+        if (! $user || $user->trashed() || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.'],
+                'email' => ['Credenciales incorrectas.'],
             ]);
         }
 

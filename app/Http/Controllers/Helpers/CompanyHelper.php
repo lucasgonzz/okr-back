@@ -19,7 +19,7 @@ class CompanyHelper
      *   - slug (string, optional; generated from name if missing)
      *   - active (bool, optional, defaults to true)
      *   - admin_name (string, required)
-     *   - admin_email (string, required, must be unique in users)
+     *   - admin_email (string, required)
      *   - admin_password (string, required)
      */
     public static function createWithAdmin(array $data): array

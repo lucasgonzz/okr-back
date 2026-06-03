@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Helpers\ActivityLogHelper;
+use App\Http\Controllers\Helpers\UserAssignmentHelper;
 use App\Http\Resources\RemiResource;
 use App\Models\Quarter;
 use App\Models\Remi;
@@ -46,6 +47,17 @@ class RemiController extends Controller
 
         $companyId = $request->user()->company_id;
 
+        if ($request->filled('responsible_user_id')) {
+            $responsibleUserId = (int) $request->input('responsible_user_id');
+            if ($response = UserAssignmentHelper::rejectIfNotAssignable(
+                $request,
+                $responsibleUserId,
+                'responsible_user_id'
+            )) {
+                return $response;
+            }
+        }
+
         $remi = Remi::create([
             'company_id' => $companyId,
             'name' => (string) $request->input('name', ''),
@@ -76,6 +88,18 @@ class RemiController extends Controller
 
         $remi = Remi::where('company_id', $request->user()->company_id)->findOrFail($id);
         $before = $remi->getAttributes();
+
+        if ($request->filled('responsible_user_id')) {
+            $responsibleUserId = (int) $request->input('responsible_user_id');
+            if ($response = UserAssignmentHelper::rejectIfNotAssignable(
+                $request,
+                $responsibleUserId,
+                'responsible_user_id'
+            )) {
+                return $response;
+            }
+        }
+
         $remi->fill($request->only([
             'name',
             'description',

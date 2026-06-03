@@ -18,7 +18,7 @@ class ObjectiveResource extends JsonResource
                 return $this->quarterModel ? new QuarterResource($this->quarterModel) : null;
             }),
             'department' => $this->whenLoaded('department', function () {
-                return new DepartmentResource($this->department);
+                return $this->department ? new DepartmentResource($this->department) : null;
             }),
             'owner' => $this->whenLoaded('owner', function () {
                 return new UserResource($this->owner);

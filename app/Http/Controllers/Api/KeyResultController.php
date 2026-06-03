@@ -2,19 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesDepartmentScope;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Helpers\KeyResultHelper;
 use App\Http\Controllers\Helpers\ObjectiveHelper;
+use App\Http\Controllers\Helpers\UserAssignmentHelper;
 use App\Http\Resources\KeyResultResource;
 use App\Http\Resources\ObjectiveResource;
 use App\Models\KeyResult;
 use App\Models\Objective;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class KeyResultController extends Controller
 {
+    use AuthorizesDepartmentScope;
+
     private const LOG_FIELDS = [
         'title' => 'Titulo',
         'description' => 'Descripcion',
@@ -50,9 +53,14 @@ class KeyResultController extends Controller
         $objective = $this->findObjectiveInCompany($request, $objectiveId);
         $this->denyStandardUserOnDepartmentMismatch($request, (int) $objective->department_id);
 
+        $ownerId = (int) $request->input('owner_id', $request->user()->id);
+        if ($response = UserAssignmentHelper::rejectIfNotAssignable($request, $ownerId, 'owner_id')) {
+            return $response;
+        }
+
         $kr = new KeyResult([
             'objective_id' => $objective->id,
-            'owner_id' => (int) $request->input('owner_id', $request->user()->id),
+            'owner_id' => $ownerId,
             'title' => (string) $request->input('title', ''),
             'description' => $request->input('description'),
             'target' => (float) $request->input('target', 0),
@@ -99,6 +107,13 @@ class KeyResultController extends Controller
         $this->denyStandardUserOnDepartmentMismatch($request, (int) $objective->department_id);
 
         $kr = KeyResult::where('objective_id', $objective->id)->findOrFail($id);
+
+        if ($request->has('owner_id') || $request->has('ownerId')) {
+            $ownerId = (int) $request->input('owner_id', $request->input('ownerId'));
+            if ($response = UserAssignmentHelper::rejectIfNotAssignable($request, $ownerId, 'owner_id')) {
+                return $response;
+            }
+        }
 
         // snapshot BEFORE mutations
         $before = $kr->getAttributes();
@@ -192,16 +207,6 @@ class KeyResultController extends Controller
     private function findObjectiveInCompany(Request $request, $objectiveId): Objective
     {
         return Objective::where('company_id', $request->user()->company_id)->findOrFail($objectiveId);
-    }
-
-    private function denyStandardUserOnDepartmentMismatch(Request $request, int $targetDeptId): void
-    {
-        $user = $request->user();
-        if ($user->role === User::ROLE_USER && (int) $user->department_id !== $targetDeptId) {
-            abort(response()->json([
-                'message' => 'Standard users can only modify key results of their own department.',
-            ], 403));
-        }
     }
 
     /**

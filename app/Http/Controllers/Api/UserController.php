@@ -49,7 +49,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'department_id' => ['required', 'integer'],
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:6'],
             'role' => ['nullable', Rule::in([User::ROLE_ADMIN, User::ROLE_USER])],
             'avatar' => ['nullable', 'string', 'max:2048'],
@@ -110,7 +110,7 @@ class UserController extends Controller
         $before = $user->getAttributes();
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'email' => ['sometimes', 'required', 'email', 'max:255'],
             'department_id' => ['sometimes', 'nullable', 'integer'],
             'avatar' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'role' => ['sometimes', Rule::in([User::ROLE_ADMIN, User::ROLE_USER])],
@@ -176,6 +176,7 @@ class UserController extends Controller
             $request->user(),
             ['company_id' => $request->user()->company_id]
         );
+        $user->tokens()->delete();
         $user->delete();
 
         return response()->json(['message' => 'User deleted.']);

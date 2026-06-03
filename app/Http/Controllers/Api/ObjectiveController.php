@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesDepartmentScope;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Helpers\ActivityLogHelper;
 use App\Http\Controllers\Helpers\ObjectiveHelper;
+use App\Http\Controllers\Helpers\UserAssignmentHelper;
 use App\Http\Resources\ObjectiveResource;
 use App\Models\Objective;
 use App\Models\Quarter;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class ObjectiveController extends Controller
 {
+    use AuthorizesDepartmentScope;
+
     private const LOG_FIELDS = [
         'title' => 'Titulo',
         'description' => 'Descripcion',
@@ -73,9 +76,15 @@ class ObjectiveController extends Controller
 
     public function store(Request $request)
     {
-        $this->denyStandardUserOnDepartmentMismatch($request, (int) $request->input('department_id'));
+        $departmentId = $this->resolveDepartmentIdForWrite($request);
+        $this->denyStandardUserOnDepartmentMismatch($request, $departmentId);
 
         $companyId = $request->user()->company_id;
+
+        $ownerId = (int) $request->input('owner_id', $request->user()->id);
+        if ($response = UserAssignmentHelper::rejectIfNotAssignable($request, $ownerId, 'owner_id')) {
+            return $response;
+        }
 
         /**
          * Cuatrimestre final resuelto para persistir en objective.
@@ -84,8 +93,8 @@ class ObjectiveController extends Controller
 
         $objective = Objective::create([
             'company_id' => $companyId,
-            'department_id' => (int) $request->input('department_id'),
-            'owner_id' => (int) $request->input('owner_id', $request->user()->id),
+            'department_id' => $departmentId,
+            'owner_id' => $ownerId,
             'remi_id' => $request->input('remi_id') ?: null,
             'quarter_id' => $quarter_payload['quarter_id'],
             'title' => (string) $request->input('title', ''),
@@ -130,16 +139,26 @@ class ObjectiveController extends Controller
             $this->denyStandardUserOnDepartmentMismatch($request, (int) $request->input('department_id'));
         }
 
-        $objective->fill($request->only([
+        if ($request->has('owner_id')) {
+            $ownerId = (int) $request->input('owner_id');
+            if ($response = UserAssignmentHelper::rejectIfNotAssignable($request, $ownerId, 'owner_id')) {
+                return $response;
+            }
+        }
+
+        $fillable = [
             'title',
             'description',
-            'department_id',
             'owner_id',
             'remi_id',
             'calculation_mode',
             'manual_progress',
             'manual_status',
-        ]));
+        ];
+        if (! $request->user()->isStandardUser()) {
+            $fillable[] = 'department_id';
+        }
+        $objective->fill($request->only($fillable));
 
         if ($request->filled('quarter') || $request->filled('quarter_id')) {
             /**
@@ -196,24 +215,6 @@ class ObjectiveController extends Controller
         $objective->delete();
 
         return response()->json(['message' => 'Objective deleted.']);
-    }
-
-    /**
-     * Standard users ('user' role) can only write objectives / KRs of their own department.
-     * Admins have no restriction.
-     */
-    private function denyStandardUserOnDepartmentMismatch(Request $request, int $targetDeptId): void
-    {
-        $user = $request->user();
-        if (! $user) {
-            abort(response()->json(['message' => 'Unauthenticated.'], 401));
-        }
-
-        if ($user->role === User::ROLE_USER && (int) $user->department_id !== $targetDeptId) {
-            abort(response()->json([
-                'message' => 'Standard users can only modify objectives of their own department.',
-            ], 403));
-        }
     }
 
     /**
